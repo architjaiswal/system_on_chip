@@ -1,0 +1,18 @@
+// UART IP 
+// UART Verilog Implementation (uart.v)
+// Archit Jaiswal
+
+//-----------------------------------------------------------------------------
+// Hardware Target
+//-----------------------------------------------------------------------------
+
+// Target Platform: DE1-SoC Board
+
+// Hardware configuration:
+// GPIO Port:
+//   GPIO_1[31-0] is used as a general purpose GPIO port
+// HPS interface:
+//   Mapped to offset of 0 in light-weight MM interface aperature
+//   IRQ80 is used as the interrupt interface to the HPS
+
+//-----------------------------------------------------------------------------
