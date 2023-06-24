@@ -1,26 +1,18 @@
-// Simultaneous Read and Write FIFO for UART IP Project
-// UART IP Module: SoC Project
-// Archit Jaiswal
 
-
-//-----------------------------------------------------------------------------
-// Hardware Target
-//-----------------------------------------------------------------------------
-
-// Target Platform: DE1-SoC Board
-
-// Verilog behavioural model of First-In-First-Out Buffer, with READ and WRITE occuring SIMULTANEOUSLY 
+// Verilog behavioural model of First-In-First-Out Buffer
 // It is 9 bit wide and allows 16 entries long buffer ( 16 X 9 buffer)
 
-module fifo (
-					output reg [8:0] DataOut, 				                //Data output
-					output reg [3:0] ReadPtr, WritePtr,                 // Read and write pointers
-					output 			  Full, Empty, OV,                   //Status outputs
-					input [8:0]      DataIn,                            //Data input
-					input            Read, Write, Clock, Reset, ClearOV //Control inputs
+module FIFO (
+					output reg [8:0] DataOut, //Data output
+					output [0:6] displayOut0, // only for instantiation 
+					output [0:6] displayOut2, // only for instantiation 
+					output [0:6] displayOut3, // only for instantiation 
+					output Full, Empty, OV,   //Status outputs
+					input [8:0] DataIn,       //Data input
+					input Read, Write, Clock, Reset, ClearOV //Control inputs
 				);
-
-		//reg [3:0] ReadPtr, WritePtr;  //Read and write pointers
+				
+		reg [3:0] ReadPtr, WritePtr;  //Read and write pointers
 		reg [4:0] PtrDiff; 				//Pointer difference
 		reg [8:0] Stack [15:0]; 		//Storage array
 		
@@ -28,86 +20,76 @@ module fifo (
 		assign Full=(PtrDiff>=5'd16)?1'b1:1'b0; //Full?
 		assign OV=(PtrDiff>=5'd17)?1'b1:1'b0;   //Overflow?
 		
-		
-		always @ (posedge Clock, posedge Reset)
-		begin
-		
-			if (Reset)
+		always @ (posedge Clock, negedge Reset)
+		begin 
+			
+			if (~Reset) 
+			begin //Test for Clear
+				DataOut <= 1'b0; //Clear data out buffer
+				ReadPtr <= 1'b0; //Clear read pointer
+				WritePtr <= 1'b0; //Clear write pointer
+				PtrDiff <= 1'b0; //Clear pointer difference
+			end
+			
+			else if (~Read && !Empty)
 			begin
-				DataOut <= 1'b0;
-				ReadPtr <= 1'b0;
-			end
-			
-			else if (Read && !Empty)
-			begin 
-				DataOut <= Stack[ReadPtr];
-				ReadPtr <= ReadPtr + 1'b1;
-			end
-			
-		end
-		
-		
-		always @ (posedge Clock, posedge Reset)
-		begin
-			
-			if (Reset)
-			begin
-				WritePtr <= 1'b0;
-			end
-			
-			else if (Write && !Full)
-			begin	
-				Stack[WritePtr] <= DataIn;
-				WritePtr <= WritePtr + 1'b1;
-			end
-			
-		end
-		
-		always @ (posedge Clock, posedge Reset)
-		begin
-			
-			if (Reset)
-			begin 
-				PtrDiff <= 1'b0;
-			end
-			
-			else if (Read && !Empty)
-			begin
-			
-				if (!OV)
+				if (!OV) 
 				begin
-					PtrDiff <= PtrDiff - 1'b1;
+					DataOut <= Stack[ReadPtr]; //Transfer data to output
+					ReadPtr <= ReadPtr + 1'b1; //Update read pointer
+					PtrDiff <= PtrDiff - 1'b1; //update pointer difference
 				end
 				
-				else
+				else 
 				begin
-					PtrDiff <= PtrDiff - 2'b10;
+					DataOut <= Stack[ReadPtr]; //Transfer data to output
+					ReadPtr <= ReadPtr + 1'b1; //Update read pointer
+					PtrDiff <= PtrDiff - 2'b10; //update pointer difference
+				end
+			end 
+			
+			else if (~Write) //Check for write
+			begin		
+				if (!Full) 
+				begin //Check for Full
+					Stack[WritePtr] <= DataIn; //If not full store data in stack
+					WritePtr <= WritePtr + 1'b1; //Update write pointer
+					PtrDiff <= PtrDiff + 1'b1; //Update pointer difference
 				end
 				
+				else 
+				begin
+					PtrDiff <= 5'd17; //Update pointer difference
+				end
 			end
-			
-			else if (Write)
-			begin
-				
-				if (!Full)
-				begin
-					PtrDiff <= PtrDiff + 1'b1;
-				end
-				
-				else
-				begin
-					PtrDiff <= 5'd17;
-				end
-			
-			end
-			
-			else if (ClearOV && OV)
+							
+			else if (~ClearOV && OV)
 			begin
 				PtrDiff <= 5'd16;
 			end
 			
-			
 		end
+		
+			
+		bin2sevenSegment HEX0
+		(
+			.BIN({Full, OV, Empty}) ,	// input [3:0] BIN_sig
+			.SEV(displayOut0) 	// output [0:6] SEV_sig
+		);
+		
+		bin2sevenSegment HEX2
+		(
+			.BIN(ReadPtr) ,	// input [3:0] BIN_sig
+			.SEV(displayOut2) 	// output [0:6] SEV_sig
+		);
+		
+		bin2sevenSegment HEX3
+		(
+			.BIN(WritePtr) ,	// input [3:0] BIN_sig
+			.SEV(displayOut3) 	// output [0:6] SEV_sig
+		);
+		
+		
 	
 endmodule		
 
